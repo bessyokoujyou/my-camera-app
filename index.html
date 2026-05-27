@@ -2,38 +2,24 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>🏭 SPG作業日報アプリ</title>
     <style>
-        :root {
-            --primary: #0056b3;
-            --success: #28a745;
-            --danger: #dc3545;
-            --bg: #f4f7f6;
-            --card-bg: #ffffff;
-        }
+        :root { --primary: #0056b3; --success: #28a745; --danger: #dc3545; --bg: #f4f7f6; }
         body { font-family: 'Meiryo', sans-serif; margin: 0; padding: 12px; background-color: var(--bg); color: #333; }
-        .card { background: var(--card-bg); border-radius: 12px; padding: 18px; box-shadow: 0 4px 10px rgba(0,0,0,0.08); margin-bottom: 14px; border: 1px solid #e1e8ed; }
-        h2 { margin-top: 0; color: var(--primary); font-size: 16px; border-bottom: 3px solid var(--primary); padding-bottom: 6px; display: flex; align-items: center; gap: 6px; }
+        .card { background: #fff; border-radius: 12px; padding: 18px; box-shadow: 0 4px 10px rgba(0,0,0,0.08); margin-bottom: 14px; border: 1px solid #e1e8ed; }
+        h2 { margin-top: 0; color: var(--primary); font-size: 16px; border-bottom: 3px solid var(--primary); padding-bottom: 6px; }
         label { display: block; font-size: 14px; font-weight: bold; margin-top: 12px; margin-bottom: 4px; color: #495057; }
-        
-        .btn { display: block; width: 100%; padding: 14px; color: white; border: none; border-radius: 8px; font-size: 16px; font-weight: bold; text-align: center; cursor: pointer; box-sizing: border-box; transition: background 0.2s, transform 0.1s; }
-        .btn-scan { background: var(--primary); box-shadow: 0 3px 6px rgba(0,86,179,0.2); }
-        .btn-start { background: var(--success); box-shadow: 0 3px 6px rgba(40,167,69,0.2); }
-        .btn-end { background: var(--danger); box-shadow: 0 3px 6px rgba(220,53,69,0.2); }
-        
-        .btn:active { transform: scale(0.98); }
-        .btn:disabled { background: #bdc3c7 !important; color: #7f8c8d !important; opacity: 0.6; cursor: not-allowed; box-shadow: none !important; transform: none !important; }
-        
-        input[type="text"], input[type="number"], select { width: 100%; padding: 12px; font-size: 16px; font-weight: bold; border: 2px solid #ced4da; border-radius: 6px; box-sizing: border-box; background: #fff; color: #333; }
-        .auto-field { background: #e9ecef !important; color: #2c3e50 !important; border-color: #cbd5e1 !important; text-align: center; }
-        .manual-input { background: #ffffff !important; color: #000000 !important; border: 2px solid var(--primary) !important; text-align: center; }
-        
-        #camera-preview { width: 100%; max-height: 220px; background: #000; border-radius: 8px; overflow: hidden; margin-bottom: 12px; display: none; border: 2px solid var(--primary); }
-        video { width: 100%; height: 100%; object-fit: cover; }
+        .btn { display: block; width: 100%; padding: 14px; color: white; border: none; border-radius: 8px; font-size: 16px; font-weight: bold; text-align: center; cursor: pointer; box-sizing: border-box; }
+        .btn-scan { background: var(--primary); }
+        .btn-start { background: var(--success); }
+        .btn-end { background: var(--danger); }
+        .btn:disabled { background: #bdc3c7 !important; color: #7f8c8d !important; opacity: 0.6; }
+        input[type="text"], input[type="number"], select { width: 100%; padding: 12px; font-size: 16px; font-weight: bold; border: 2px solid #ced4da; border-radius: 6px; box-sizing: border-box; }
+        .auto-field { background: #e9ecef !important; text-align: center; }
+        .manual-input { background: #ffffff !important; border: 2px solid var(--primary) !important; text-align: center; }
         .flex-container { display: flex; gap: 12px; margin-top: 16px; }
-        
-        .toast { position: fixed; top: 40%; left: 50%; transform: translate(-50%, -50%); background: rgba(0,0,0,0.85); color: #fff; padding: 14px 24px; border-radius: 25px; font-size: 15px; font-weight: bold; z-index: 10000; display: none; text-align: center; width: 85%; box-shadow: 0 5px 15px rgba(0,0,0,0.3); }
+        .toast { position: fixed; top: 40%; left: 50%; transform: translate(-50%, -50%); background: rgba(0,0,0,0.85); color: #fff; padding: 14px 24px; border-radius: 25px; font-size: 15px; font-weight: bold; z-index: 10000; display: none; text-align: center; width: 75%; }
         .toast.show { display: block; }
     </style>
 </head>
@@ -41,19 +27,14 @@
 
     <div class="card">
         <h2>📷 加工指図書バーコードスキャン</h2>
-        <div id="camera-preview">
-            <video id="video" autoplay playsinline></video>
-        </div>
-        <button class="btn btn-scan" id="scan-btn" onclick="startCamera()">カメラを起動してスキャン</button>
+        <button class="btn btn-scan" id="scan-btn">カメラを起動してスキャン</button>
     </div>
 
     <div class="card">
         <h2>📝 日報入力内容</h2>
         
         <label>発注No:</label>
-        <div style="display: flex; gap: 8px;">
-            <input type="text" id="order-input" class="manual-input" placeholder="6桁の数字を入力またはスキャン" oninput="triggerInstantSearch()">
-        </div>
+        <input type="text" id="order-input" class="manual-input" placeholder="6桁の数字を入力" oninput="triggerInstantSearch()">
         
         <label>日付:</label>
         <input type="text" id="date-input" class="auto-field" readonly>
@@ -70,33 +51,24 @@
         <select id="line-select">
             <option value="Aライン">ライン A</option>
             <option value="Bライン">ライン B</option>
-            <option value="Cライン">ライン C</option>
-            <option value="Dライン">ライン D</option>
         </select>
         
         <label>作業人数 (名):</label>
-        <input type="number" id="workers-input" value="1" min="1" max="20">
+        <input type="number" id="workers-input" value="1" min="1">
         
         <div class="flex-container">
-            <button class="btn btn-start" id="start-btn" onclick="sendNippo('開始')" disabled>▶ 「開始」ボタン</button>
-            <button class="btn btn-end" id="end-btn" onclick="sendNippo('完了')" disabled>■ 「完了」ボタン</button>
+            <button class="btn btn-start" id="start-btn" disabled>▶ 「開始」ボタン</button>
+            <button class="btn btn-end" id="end-btn" disabled>■ 「完了」ボタン</button>
         </div>
     </div>
 
     <div id="toast" class="toast"></div>
 
-    <script src="https://cdn.jsdelivr.net/npm/@zxing/library@0.19.1/umd/index.min.js"></script>
     <script>
         // ⚠️【最重要】この下の "" の中に、さきほど手順1の最後で生成した「最新のウェブアプリURL」を上書き貼り付けしてください！
-        const API_URL = "https://script.google.com/macros/s/AKfycbyVDbSrBdLA63F-pb07u4hkhA8diEVpiWklF2jme7KsLaUALxgW7TiYDMnof2WY7ZTYxQ/exec";
+        const API_URL = "ここにURL";
         
-        let codeReader = null;
-        let selectedDeviceId = null;
-        let currentStatus = "未開始";
-
         window.addEventListener('load', () => {
-            codeReader = new ZXing.BrowserMultiFormatReader();
-            
             const today = new Date();
             const yyyy = today.getFullYear();
             const mm = String(today.getMonth() + 1).padStart(2, '0');
@@ -104,59 +76,20 @@
             document.getElementById('date-input').value = `${yyyy}/${mm}/${dd}`;
         });
 
-        function startCamera() {
-            const preview = document.getElementById('camera-preview');
-            preview.style.display = 'block';
-            codeReader.listVideoInputDevices()
-                .then((videoInputDevices) => {
-                    selectedDeviceId = videoInputDevices[0].deviceId;
-                    if (videoInputDevices.length > 1) {
-                        for(let device of videoInputDevices){
-                            if(device.label.toLowerCase().includes('back') || device.label.toLowerCase().includes('environment')){
-                                selectedDeviceId = device.deviceId;
-                                break;
-                            }
-                        }
-                    }
-                    showToast("バーコードを枠内に映してください。");
-                    codeReader.decodeFromVideoDevice(selectedDeviceId, 'video', (result, err) => {
-                        if (result) {
-                            let scannedText = result.text.trim();
-                            let cleanText = scannedText.toUpperCase().startsWith("S") ? scannedText.substring(1) : scannedText;
-                            let core6Digit = cleanText.substring(0, 6);
-
-                            document.getElementById('order-input').value = core6Digit;
-                            showToast("✔ 読込番号: " + core6Digit);
-                            fetchOrderInfo(core6Digit);
-                            stopCamera();
-                        }
-                    });
-                }).catch(err => showToast("❌ カメラの起動に失敗しました。"));
-        }
-
-        function stopCamera() {
-            codeReader.reset();
-            document.getElementById('camera-preview').style.display = 'none';
-        }
-
         let searchTimeout = null;
         function triggerInstantSearch() {
             const orderVal = document.getElementById('order-input').value.trim();
-            
             if (!orderVal) {
                 document.getElementById('name-input').value = "---";
                 document.getElementById('qty-input').value = "---";
-                currentStatus = "未開始";
-                updateButtonStates();
                 return;
             }
 
             clearTimeout(searchTimeout);
             searchTimeout = setTimeout(() => {
-                let cleanVal = orderVal.toUpperCase().startsWith("S") ? orderVal.substring(1) : orderVal;
+                let cleanVal = orderVal.toUpperCase().replace(/^S/, "");
                 let core6Digit = cleanVal.substring(0, 6);
                 
-                // 6桁の数字が打ち込まれた瞬間、確定ボタンなしで自動通信
                 if (core6Digit.length >= 6) {
                     document.getElementById('order-input').value = core6Digit;
                     fetchOrderInfo(core6Digit);
@@ -165,114 +98,27 @@
         }
 
         function fetchOrderInfo(orderNo) {
-            showToast("指指残シートから情報を照合中...");
+            const toast = document.getElementById('toast');
+            toast.textContent = "指図残シートから情報を照合中...";
+            toast.classList.add('show');
+
             fetch(`${API_URL}?action=getOne&orderNo=${orderNo}`)
                 .then(res => res.json())
                 .then(res => {
+                    toast.classList.remove('show');
                     if (res.status === "success" && res.order) {
-                        document.getElementById('name-input').value = res.order.name || "---";
-                        document.getElementById('qty-input').value = res.order.qty || "---";
-                        showToast("✔ 指指残シートと100%連動しました");
-                        currentStatus = "未開始";
-                        updateButtonStates();
+                        document.getElementById('name-input').value = res.order.name;
+                        document.getElementById('qty-input').value = res.order.qty;
+                        document.getElementById('start-btn').disabled = false;
                     } else {
-                        showToast(res.message);
                         document.getElementById('name-input').value = "不一致エラー";
                         document.getElementById('qty-input').value = "---";
-                        currentStatus = "未開始";
-                        updateButtonStates();
                     }
                 })
                 .catch(err => {
-                    showToast("❌ データの取得に失敗しました。");
+                    toast.textContent = "❌ データの取得に失敗しました。";
                     document.getElementById('name-input').value = "不一致エラー";
-                    document.getElementById('qty-input').value = "---";
-                    currentStatus = "未開始";
-                    updateButtonStates();
                 });
-        }
-
-        function updateButtonStates() {
-            const startBtn = document.getElementById('start-btn');
-            const endBtn = document.getElementById('end-btn');
-            const orderVal = document.getElementById('order-input').value;
-
-            if (!orderVal) {
-                startBtn.disabled = true;
-                endBtn.disabled = true;
-                return;
-            }
-
-            if (currentStatus === "未開始") {
-                startBtn.disabled = false;
-                endBtn.disabled = true;
-            } else if (currentStatus === "開始中") {
-                startBtn.disabled = true;
-                endBtn.disabled = false;
-            } else if (currentStatus === "終了済") {
-                startBtn.disabled = true;
-                document.getElementById('order-input').value = "";
-                document.getElementById('name-input').value = "---";
-                document.getElementById('qty-input').value = "---";
-                endBtn.disabled = true;
-            }
-        }
-
-        function sendNippo(type) {
-            const orderNo = document.getElementById('order-input').value;
-            const line = document.getElementById('line-select').value;
-            const workers = document.getElementById('workers-input').value;
-            const dateVal = document.getElementById('date-input').value;
-            const nameVal = document.getElementById('name-input').value;
-            const qtyVal = document.getElementById('qty-input').value;
-
-            const payload = {
-                action: "save",
-                data: {
-                    orderNo: orderNo,
-                    line: line,
-                    workers: workers,
-                    type: type,
-                    date: dateVal,
-                    productName: nameVal,
-                    qty: qtyVal
-                }
-            };
-
-            showToast(type + "時刻を記録中...");
-            document.getElementById('start-btn').disabled = true;
-            document.getElementById('end-btn').disabled = true;
-
-            fetch(API_URL, {
-                method: "POST",
-                mode: "no-cors",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(payload)
-            })
-            .then(() => {
-                showToast("✅ " + type + " を保存しました");
-                if (type === '開始') {
-                    currentStatus = "開始中";
-                } else {
-                    currentStatus = "終了済";
-                    setTimeout(() => {
-                        currentStatus = "未開始";
-                        updateButtonStates();
-                    }, 2000);
-                }
-                updateButtonStates();
-            })
-            .catch(err => {
-                showToast("❌ 保存エラーが発生しました。");
-                updateButtonStates();
-            });
-        }
-
-        function showToast(msg) {
-            const toast = document.getElementById('toast');
-            toast.textContent = msg;
-            toast.classList.add('show');
-            setTimeout(() => { toast.classList.remove('show'); }, 4000);
         }
     </script>
 </body>
