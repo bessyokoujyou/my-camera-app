@@ -52,13 +52,13 @@
         <label>発注No:</label>
         <input type="text" id="order-input" class="auto-field" readonly placeholder="指図書をスキャンしてください">
         
-        <label>日付 (入力当日):</label>
-        <input type="text" id="date-input" class="auto-field" readonly placeholder="---">
+        <label>日付:</label>
+        <input type="text" id="date-input" class="auto-field" readonly>
         
-        <label>商品名 (J列＋K列上下合体):</label>
+        <label>商品名:</label>
         <input type="text" id="name-input" class="auto-field" readonly placeholder="---">
         
-        <label>数量 (L列の数量):</label>
+        <label>数量:</label>
         <input type="text" id="qty-input" class="auto-field" readonly placeholder="---">
         
         <hr style="border: 0; border-top: 1px solid #dee2e6; margin: 20px 0;">
@@ -84,8 +84,8 @@
 
     <script src="https://cdn.jsdelivr.net/npm/@zxing/library@0.19.1/umd/index.min.js"></script>
     <script>
-        // 🔗 手順①で新しく発行したGASのウェブアプリURLをここに貼り付けます
-        const API_URL = "ここに手順①でコピーしたURLを貼る";
+        // 🔗 102行目：手順1でコピーした新しいGASのURLをここに貼り付けます
+        const API_URL = "https://script.google.com/macros/s/AKfycby.../exec";
         
         let codeReader = null;
         let selectedDeviceId = null;
@@ -93,6 +93,13 @@
 
         window.addEventListener('load', () => {
             codeReader = new ZXing.BrowserMultiFormatReader();
+            
+            // 💡 アプリを開いた瞬間に、今日の日付を自動でセットする仕組み
+            const today = new Date();
+            const yyyy = today.getFullYear();
+            const mm = String(today.getMonth() + 1).padStart(2, '0');
+            const dd = String(today.getDate()).padStart(2, '0');
+            document.getElementById('date-input').value = `${yyyy}/${mm}/${dd}`;
         });
 
         function startCamera() {
@@ -136,7 +143,7 @@
                 .then(res => res.json())
                 .then(res => {
                     if (res.status === "success" && res.data) {
-                        document.getElementById('date-input').value = res.data["日付"] || "---";
+                        // 日付はすでに今日が入っているので、商品名と数量だけ上書きします
                         document.getElementById('name-input').value = res.data["商品名"] || "---";
                         document.getElementById('qty-input').value = res.data["数量"] || "---";
                         showToast("✔ 指図残シートと100%連動しました");
@@ -144,7 +151,6 @@
                         updateButtonStates();
                     } else {
                         showToast("⚠ 指定の発注Noが見つかりません。");
-                        document.getElementById('date-input').value = "新規受付";
                         document.getElementById('name-input').value = "手動製品";
                         document.getElementById('qty-input').value = "1";
                         currentStatus = "未開始";
@@ -220,7 +226,6 @@
                     currentStatus = "終了済";
                     setTimeout(() => {
                         document.getElementById('order-input').value = "";
-                        document.getElementById('date-input').value = "---";
                         document.getElementById('name-input').value = "---";
                         document.getElementById('qty-input').value = "---";
                         currentStatus = "未開始";
