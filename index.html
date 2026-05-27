@@ -52,7 +52,7 @@
         
         <label>発注No:</label>
         <div style="display: flex; gap: 8px;">
-            <input type="text" id="order-input" class="manual-input" placeholder="スキャンするか、ここに入力" oninput="checkManualInput()">
+            <input type="text" id="order-input" class="manual-input" placeholder="6桁の数字を入力またはスキャン" oninput="checkManualInput()">
             <button class="btn" id="search-btn" style="width: 100px; padding: 0 10px; background: var(--primary); font-size: 14px;" onclick="triggerManualSearch()">確定</button>
         </div>
         
@@ -123,9 +123,13 @@
                     codeReader.decodeFromVideoDevice(selectedDeviceId, 'video', (result, err) => {
                         if (result) {
                             let scannedText = result.text.trim();
-                            document.getElementById('order-input').value = scannedText;
-                            showToast("✔ 読込番号: " + scannedText);
-                            fetchOrderInfo(scannedText);
+                            // スキャン時も分かりやすいように最初から頭6桁だけを切り出します
+                            let cleanText = scannedText.toUpperCase().startsWith("S") ? scannedText.substring(1) : scannedText;
+                            let core6Digit = cleanText.substring(0, 6);
+
+                            document.getElementById('order-input').value = core6Digit;
+                            showToast("✔ 読込番号: " + core6Digit);
+                            fetchOrderInfo(core6Digit);
                             stopCamera();
                         }
                     });
@@ -153,7 +157,12 @@
                 showToast("発注Noを入力してください。");
                 return;
             }
-            fetchOrderInfo(orderVal);
+            // 手動入力時も頭の6桁だけを抜き出します
+            let cleanVal = orderVal.toUpperCase().startsWith("S") ? orderVal.substring(1) : orderVal;
+            let core6Digit = cleanVal.substring(0, 6);
+            document.getElementById('order-input').value = core6Digit;
+
+            fetchOrderInfo(core6Digit);
         }
 
         function fetchOrderInfo(orderNo) {
