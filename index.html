@@ -28,11 +28,14 @@
         input[type="text"], input[type="number"], select { width: 100%; padding: 12px; font-size: 16px; font-weight: bold; border: 2px solid #ced4da; border-radius: 6px; box-sizing: border-box; background: #fff; color: #333; }
         .auto-field { background: #e9ecef !important; color: #2c3e50 !important; border-color: #cbd5e1 !important; text-align: center; }
         
+        /* 手打ちができる発注No入力欄は背景を白く、枠をわかりやすく強調します */
+        .manual-input { background: #ffffff !important; color: #000000 !important; border: 2px solid var(--primary) !important; text-align: center; }
+        
         #camera-preview { width: 100%; max-height: 220px; background: #000; border-radius: 8px; overflow: hidden; margin-bottom: 12px; display: none; border: 2px solid var(--primary); }
         video { width: 100%; height: 100%; object-fit: cover; }
         .flex-container { display: flex; gap: 12px; margin-top: 16px; }
         
-        .toast { position: fixed; top: 40%; left: 50%; transform: translate(-50%, -50%); background: rgba(0,0,0,0.85); color: #fff; padding: 14px 24px; border-radius: 25px; font-size: 15px; font-weight: bold; z-index: 10000; display: none; text-align: center; width: 75%; box-shadow: 0 5px 15px rgba(0,0,0,0.3); }
+        .toast { position: fixed; top: 40%; left: 50%; transform: translate(-50%, -50%); background: rgba(0,0,0,0.85); color: #fff; padding: 14px 24px; border-radius: 25px; font-size: 15px; font-weight: bold; z-index: 10000; display: none; text-align: center; width: 85%; box-shadow: 0 5px 15px rgba(0,0,0,0.3); }
         .toast.show { display: block; }
     </style>
 </head>
@@ -49,8 +52,11 @@
     <div class="card">
         <h2>📝 日報入力内容</h2>
         
-        <label>発注No:</label>
-        <input type="text" id="order-input" class="auto-field" readonly placeholder="指図書をスキャンしてください">
+        <label>発注No (手打ち入力も可能です):</label>
+        <div style="display: flex; gap: 8px;">
+            <input type="text" id="order-input" class="manual-input" placeholder="スキャンするか、ここに入力" oninput="checkManualInput()">
+            <button class="btn" id="search-btn" style="width: 100px; padding: 0 10px; background: var(--primary); font-size: 14px;" onclick="triggerManualSearch()">確定</button>
+        </div>
         
         <label>日付:</label>
         <input type="text" id="date-input" class="auto-field" readonly>
@@ -84,7 +90,7 @@
 
     <script src="https://cdn.jsdelivr.net/npm/@zxing/library@0.19.1/umd/index.min.js"></script>
     <script>
-        // 🔗 102行目：手順1で新しくコピーしたウェブアプリURLを、この下の "" の中に綺麗に貼り付けてください
+        // 🔗 102行目：手順1でコピーした新しいGASのURLを貼り付けます
         const API_URL = "https://script.google.com/macros/s/AKfycbyVDbSrBdLA63F-pb07u4hkhA8diEVpiWklF2jme7KsLaUALxgW7TiYDMnof2WY7ZTYxQ/exec";
         
         let codeReader = null;
@@ -94,7 +100,6 @@
         window.addEventListener('load', () => {
             codeReader = new ZXing.BrowserMultiFormatReader();
             
-            // 💡 アプリを開いた瞬間に、今日の日付（入力当日）を最初から自動で固定セットする処理
             const today = new Date();
             const yyyy = today.getFullYear();
             const mm = String(today.getMonth() + 1).padStart(2, '0');
@@ -119,7 +124,13 @@
                     showToast("バーコードを枠内に映してください。");
                     codeReader.decodeFromVideoDevice(selectedDeviceId, 'video', (result, err) => {
                         if (result) {
-                            const scannedText = result.text.trim();
+                            let scannedText = result.text.trim();
+                            
+                            // ★【スキャン対策】もし先頭にSが入っていたらここで自動的にカットする
+                            if (scannedText.toUpperCase().startsWith("S")) {
+                                scannedText = scannedText.substring(1);
+                            }
+                            
                             const cleanOrderNo = (scannedText.endsWith("00") || scannedText.endsWith("01")) ? scannedText.slice(0, -2) : scannedText;
                             
                             document.getElementById('order-input').value = cleanOrderNo;
@@ -137,22 +148,46 @@
             document.getElementById('camera-preview').style.display = 'none';
         }
 
+        // 手打ち入力された時の動き（文字が消されたらボタンをリセットする）
+        function checkManualInput() {
+            const orderVal = document.getElementById('order-input').value.trim();
+            if (!orderVal) {
+                document.getElementById('name-input').value = "---";
+                document.getElementById('qty-input').value = "---";
+                currentStatus = "未開始";
+                updateButtonStates();
+            }
+        }
+
+        // 手打ち後に「確定」ボタンを押したときの処理
+        function triggerManualSearch() {
+            let orderVal = document.getElementById('order-input').value.trim();
+            if (!orderVal) {
+                showToast("発注Noを入力してください。");
+                return;
+            }
+            if (orderVal.toUpperCase().startsWith("S")) {
+                orderVal = orderVal.substring(1);
+                document.getElementById('order-input').value = orderVal;
+            }
+            fetchOrderInfo(orderVal);
+        }
+
         function fetchOrderInfo(orderNo) {
             showToast("指図残シートから情報を照合中...");
             fetch(`${API_URL}?action=getOne&orderNo=${orderNo}`)
                 .then(res => res.json())
                 .then(res => {
                     if (res.status === "success" && res.data) {
-                        // 商品名（J・K列合体値）と、数量（L列の値）をセットします
                         document.getElementById('name-input').value = res.data["商品名"] || "---";
-                        document.getElementById('qty-input').value = res.data["数量"] || "---";
+                        document.getElementById('qty-input').value = res.data["數量"] || res.data["数量"] || "---";
                         showToast("✔ 指図残シートと100%連動しました");
                         currentStatus = "未開始";
                         updateButtonStates();
                     } else {
-                        showToast("⚠ 指定の発注Noが見つかりません。");
-                        document.getElementById('name-input').value = "手動製品";
-                        document.getElementById('qty-input').value = "1";
+                        showToast(res.message);
+                        document.getElementById('name-input').value = "不一致エラー";
+                        document.getElementById('qty-input').value = "---";
                         currentStatus = "未開始";
                         updateButtonStates();
                     }
@@ -244,7 +279,7 @@
             const toast = document.getElementById('toast');
             toast.textContent = msg;
             toast.classList.add('show');
-            setTimeout(() => { toast.classList.remove('show'); }, 3000);
+            setTimeout(() => { toast.classList.remove('show'); }, 4000);
         }
     </script>
 </body>
