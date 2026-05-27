@@ -84,8 +84,8 @@
 
     <script src="https://cdn.jsdelivr.net/npm/@zxing/library@0.19.1/umd/index.min.js"></script>
     <script>
-        // 🔗 102行目：手順1でコピーした新しいGASのURLをここに貼り付けます
-        const API_URL = "https://script.google.com/macros/s/AKfycby.../exec";
+        // 🔗 スクリーンショット(272)で完璧に入力されていた、あなたの本物のGAS URLです
+        const API_URL = "https://script.google.com/macros/s/AKfycbyVDbSrBdLA63F-pb07u4hkhA8diEVpiWklF2jme7KsLaUALxgW7TiYDMnof2WY7ZTYxQ/exec";
         
         let codeReader = null;
         let selectedDeviceId = null;
@@ -94,7 +94,7 @@
         window.addEventListener('load', () => {
             codeReader = new ZXing.BrowserMultiFormatReader();
             
-            // 💡 アプリを開いた瞬間に、今日の日付を自動でセットする仕組み
+            // アプリを開いた瞬間に、今日の日付を自動でセットする仕組み
             const today = new Date();
             const yyyy = today.getFullYear();
             const mm = String(today.getMonth() + 1).padStart(2, '0');
@@ -143,7 +143,6 @@
                 .then(res => res.json())
                 .then(res => {
                     if (res.status === "success" && res.data) {
-                        // 日付はすでに今日が入っているので、商品名と数量だけ上書きします
                         document.getElementById('name-input').value = res.data["商品名"] || "---";
                         document.getElementById('qty-input').value = res.data["数量"] || "---";
                         showToast("✔ 指図残シートと100%連動しました");
