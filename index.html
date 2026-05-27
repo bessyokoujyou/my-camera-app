@@ -27,8 +27,6 @@
         
         input[type="text"], input[type="number"], select { width: 100%; padding: 12px; font-size: 16px; font-weight: bold; border: 2px solid #ced4da; border-radius: 6px; box-sizing: border-box; background: #fff; color: #333; }
         .auto-field { background: #e9ecef !important; color: #2c3e50 !important; border-color: #cbd5e1 !important; text-align: center; }
-        
-        /* 手打ちができる発注No入力欄は背景を白く、枠をわかりやすく強調します */
         .manual-input { background: #ffffff !important; color: #000000 !important; border: 2px solid var(--primary) !important; text-align: center; }
         
         #camera-preview { width: 100%; max-height: 220px; background: #000; border-radius: 8px; overflow: hidden; margin-bottom: 12px; display: none; border: 2px solid var(--primary); }
@@ -52,7 +50,7 @@
     <div class="card">
         <h2>📝 日報入力内容</h2>
         
-        <label>発注No (手打ち入力も可能です):</label>
+        <label>発注No:</label>
         <div style="display: flex; gap: 8px;">
             <input type="text" id="order-input" class="manual-input" placeholder="スキャンするか、ここに入力" oninput="checkManualInput()">
             <button class="btn" id="search-btn" style="width: 100px; padding: 0 10px; background: var(--primary); font-size: 14px;" onclick="triggerManualSearch()">確定</button>
@@ -90,7 +88,7 @@
 
     <script src="https://cdn.jsdelivr.net/npm/@zxing/library@0.19.1/umd/index.min.js"></script>
     <script>
-        // 🔗 102行目：手順1でコピーした新しいGASのURLを貼り付けます
+        // 🔗 102行目：手順1でコピーした最新のGASのURLをここに貼り付けます
         const API_URL = "https://script.google.com/macros/s/AKfycbyVDbSrBdLA63F-pb07u4hkhA8diEVpiWklF2jme7KsLaUALxgW7TiYDMnof2WY7ZTYxQ/exec";
         
         let codeReader = null;
@@ -125,18 +123,9 @@
                     codeReader.decodeFromVideoDevice(selectedDeviceId, 'video', (result, err) => {
                         if (result) {
                             let scannedText = result.text.trim();
-                            
-                            // ★【スキャン対策】もし先頭にSが入っていたらここで自動的にカットする
-                            if (scannedText.toUpperCase().startsWith("S")) {
-                                scannedText = scannedText.substring(1);
-                            }
-                            
-                            const cleanOrderNo = (scannedText.endsWith("00") || scannedText.endsWith("01")) ? scannedText.slice(0, -2) : scannedText;
-                            
-                            document.getElementById('order-input').value = cleanOrderNo;
-                            showToast("✔ スキャン完了: " + cleanOrderNo);
-                            
-                            fetchOrderInfo(cleanOrderNo);
+                            document.getElementById('order-input').value = scannedText;
+                            showToast("✔ 読込番号: " + scannedText);
+                            fetchOrderInfo(scannedText);
                             stopCamera();
                         }
                     });
@@ -148,7 +137,6 @@
             document.getElementById('camera-preview').style.display = 'none';
         }
 
-        // 手打ち入力された時の動き（文字が消されたらボタンをリセットする）
         function checkManualInput() {
             const orderVal = document.getElementById('order-input').value.trim();
             if (!orderVal) {
@@ -159,16 +147,11 @@
             }
         }
 
-        // 手打ち後に「確定」ボタンを押したときの処理
         function triggerManualSearch() {
             let orderVal = document.getElementById('order-input').value.trim();
             if (!orderVal) {
                 showToast("発注Noを入力してください。");
                 return;
-            }
-            if (orderVal.toUpperCase().startsWith("S")) {
-                orderVal = orderVal.substring(1);
-                document.getElementById('order-input').value = orderVal;
             }
             fetchOrderInfo(orderVal);
         }
@@ -180,7 +163,7 @@
                 .then(res => {
                     if (res.status === "success" && res.data) {
                         document.getElementById('name-input').value = res.data["商品名"] || "---";
-                        document.getElementById('qty-input').value = res.data["數量"] || res.data["数量"] || "---";
+                        document.getElementById('qty-input').value = res.data["数量"] || "---";
                         showToast("✔ 指図残シートと100%連動しました");
                         currentStatus = "未開始";
                         updateButtonStates();
