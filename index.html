@@ -165,14 +165,14 @@
         }
 
         function fetchOrderInfo(orderNo) {
-            showToast("指図残シートから情報を照合中...");
+            showToast("指指残シートから情報を照合中...");
             fetch(`${API_URL}?action=getOne&orderNo=${orderNo}`)
                 .then(res => res.json())
                 .then(res => {
                     if (res.status === "success" && res.order) {
                         document.getElementById('name-input').value = res.order.name || "---";
                         document.getElementById('qty-input').value = res.order.qty || "---";
-                        showToast("✔ 指図残シートと100%連動しました");
+                        showToast("✔ 指指残シートと100%連動しました");
                         currentStatus = "未開始";
                         updateButtonStates();
                     } else {
@@ -185,6 +185,8 @@
                 })
                 .catch(err => {
                     showToast("❌ データの取得に失敗しました。");
+                    document.getElementById('name-input').value = "不一致エラー";
+                    document.getElementById('qty-input').value = "---";
                     currentStatus = "未開始";
                     updateButtonStates();
                 });
