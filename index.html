@@ -87,8 +87,8 @@
 
     <script src="https://cdn.jsdelivr.net/npm/@zxing/library@0.19.1/umd/index.min.js"></script>
     <script>
-        // 🔗 102行目：手順1の最後に生成された最新のGASのURLをこの下の "" の中に貼り付けてください
-        const API_URL = "https://script.google.com/macros/s/AKfycbyVDbSrBdLA63F-pb07u4hkhA8diEVpiWklF2jme7KsLaUALxgW7TiYDMnof2WY7ZTYxQ/exec";
+        // 🔗 102行目：最新のGASのURLをこの下の "" の中に貼り付けます
+        const API_URL = "ここにURL";
         
         let codeReader = null;
         let selectedDeviceId = null;
@@ -139,7 +139,6 @@
             document.getElementById('camera-preview').style.display = 'none';
         }
 
-        // 💡「確定」ボタンなしで、手打ちした瞬間に一発で自動検索を走らせる高度な処理
         let searchTimeout = null;
         function triggerInstantSearch() {
             const orderVal = document.getElementById('order-input').value.trim();
@@ -157,12 +156,11 @@
                 let cleanVal = orderVal.toUpperCase().startsWith("S") ? orderVal.substring(1) : orderVal;
                 let core6Digit = cleanVal.substring(0, 6);
                 
-                // 6桁入力された時点で自動で通信を開始する
                 if (core6Digit.length >= 6) {
                     document.getElementById('order-input').value = core6Digit;
                     fetchOrderInfo(core6Digit);
                 }
-            }, 400); // 0.4秒タイピングが止まったら自動確定
+            }, 400); 
         }
 
         function fetchOrderInfo(orderNo) {
@@ -170,9 +168,10 @@
             fetch(`${API_URL}?action=getOne&orderNo=${orderNo}`)
                 .then(res => res.json())
                 .then(res => {
-                    if (res.status === "success" && res.data) {
-                        document.getElementById('name-input').value = res.data["商品名"] || "---";
-                        document.getElementById('qty-input').value = res.data["数量"] || "---";
+                    // 💡【ここを大修正！】GASから届いた order.name と order.qty の引き出しをそのままガチッと受け取ります
+                    if (res.status === "success" && res.order) {
+                        document.getElementById('name-input').value = res.order.name || "---";
+                        document.getElementById('qty-input').value = res.order.qty || "---";
                         showToast("✔ 指図残シートと100%連動しました");
                         currentStatus = "未開始";
                         updateButtonStates();
@@ -185,7 +184,7 @@
                     }
                 })
                 .catch(err => {
-                    showToast("❌ データの取得に失敗しました。もう一度入力し直してください。");
+                    showToast("❌ データの取得に失敗しました。");
                     currentStatus = "未開始";
                     updateButtonStates();
                 });
