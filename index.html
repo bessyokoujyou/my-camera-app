@@ -17,7 +17,6 @@
         h2 { margin-top: 0; color: var(--primary); font-size: 16px; border-bottom: 3px solid var(--primary); padding-bottom: 6px; display: flex; align-items: center; gap: 6px; }
         label { display: block; font-size: 14px; font-weight: bold; margin-top: 12px; margin-bottom: 4px; color: #495057; }
         
-        /* ボタンのデザイン */
         .btn { display: block; width: 100%; padding: 14px; color: white; border: none; border-radius: 8px; font-size: 16px; font-weight: bold; text-align: center; cursor: pointer; box-sizing: border-box; transition: background 0.2s, transform 0.1s; }
         .btn-scan { background: var(--primary); box-shadow: 0 3px 6px rgba(0,86,179,0.2); }
         .btn-start { background: var(--success); box-shadow: 0 3px 6px rgba(40,167,69,0.2); }
@@ -26,17 +25,13 @@
         .btn:active { transform: scale(0.98); }
         .btn:disabled { background: #bdc3c7 !important; color: #7f8c8d !important; opacity: 0.6; cursor: not-allowed; box-shadow: none !important; transform: none !important; }
         
-        /* 入力・選択欄のデザイン */
         input[type="text"], input[type="number"], select { width: 100%; padding: 12px; font-size: 16px; font-weight: bold; border: 2px solid #ced4da; border-radius: 6px; box-sizing: border-box; background: #fff; color: #333; }
-        
-        /* 自動表示される非活性（読み取り専用）項目のデザイン */
-        .auto-field { background: #e9ecef !important; color: #2c3e50 !important; border-color: #cbd5e1 !important; }
+        .auto-field { background: #e9ecef !important; color: #2c3e50 !important; border-color: #cbd5e1 !important; text-align: center; }
         
         #camera-preview { width: 100%; max-height: 220px; background: #000; border-radius: 8px; overflow: hidden; margin-bottom: 12px; display: none; border: 2px solid var(--primary); }
         video { width: 100%; height: 100%; object-fit: cover; }
         .flex-container { display: flex; gap: 12px; margin-top: 16px; }
         
-        /* メッセージ表示 */
         .toast { position: fixed; top: 40%; left: 50%; transform: translate(-50%, -50%); background: rgba(0,0,0,0.85); color: #fff; padding: 14px 24px; border-radius: 25px; font-size: 15px; font-weight: bold; z-index: 10000; display: none; text-align: center; width: 75%; box-shadow: 0 5px 15px rgba(0,0,0,0.3); }
         .toast.show { display: block; }
     </style>
@@ -57,13 +52,13 @@
         <label>発注No:</label>
         <input type="text" id="order-input" class="auto-field" readonly placeholder="指図書をスキャンしてください">
         
-        <label>日付 (自動表示):</label>
+        <label>日付 (納期):</label>
         <input type="text" id="date-input" class="auto-field" readonly placeholder="---">
         
-        <label>商品名 (自動表示):</label>
+        <label>商品名 (品名):</label>
         <input type="text" id="name-input" class="auto-field" readonly placeholder="---">
         
-        <label>数量 (自動表示):</label>
+        <label>数量 (指図数):</label>
         <input type="text" id="qty-input" class="auto-field" readonly placeholder="---">
         
         <hr style="border: 0; border-top: 1px solid #dee2e6; margin: 20px 0;">
@@ -89,8 +84,8 @@
 
     <script src="https://cdn.jsdelivr.net/npm/@zxing/library@0.19.1/umd/index.min.js"></script>
     <script>
-        const API_URL = "https://script.google.com/macros/s/AKfycbyVDbSrBdLA63F-pb07u4hkhA8diEVpiWklF2jme7KsLaUALxgW7TiYDMnof2WY7ZTYxQ/exec";
-        
+        // ★ここに新しくデプロイしたGASのURLを貼り付ける★
+       https://script.google.com/macros/s/AKfycbz0FKmsj6DqwF7HahGJZy3WqgNmnsc_1n1-DjOf9cPNv5SBkz5-08wuV7pVPQ2GwP7D8Q/exec
         let codeReader = null;
         let selectedDeviceId = null;
         let currentStatus = "未開始";
@@ -117,13 +112,11 @@
                     codeReader.decodeFromVideoDevice(selectedDeviceId, 'video', (result, err) => {
                         if (result) {
                             const scannedText = result.text.trim();
-                            // 末尾00や01を自動カットして純粋な発注Noにする
                             const cleanOrderNo = (scannedText.endsWith("00") || scannedText.endsWith("01")) ? scannedText.slice(0, -2) : scannedText;
                             
                             document.getElementById('order-input').value = cleanOrderNo;
                             showToast("✔ スキャン完了: " + cleanOrderNo);
                             
-                            // スキャンしたらすぐに商品データを引っ張ってくる
                             fetchOrderInfo(cleanOrderNo);
                             stopCamera();
                         }
@@ -136,34 +129,31 @@
             document.getElementById('camera-preview').style.display = 'none';
         }
 
-        // GAS経由でスプレッドシートから日付・商品名・数量を自動取得する関数
         function fetchOrderInfo(orderNo) {
-            showToast("商品情報を照合中...");
+            showToast("指図残データから情報を照合中...");
             fetch(`${API_URL}?action=getOne&orderNo=${orderNo}`)
                 .then(res => res.json())
                 .then(res => {
                     if (res.status === "success" && res.data) {
-                        // スプレッドシートの列名に合わせてデータを自動表示
-                        // ※列名が「納期」「品名」「受注数」などの場合は自動でマッピングされます
-                        document.getElementById('date-input').value = res.data["日付"] || res.data["納期"] || "---";
-                        document.getElementById('name-input').value = res.data["商品名"] || res.data["品名"] || "---";
-                        document.getElementById('qty-input').value = res.data["数量"] || res.data["受注数"] || "---";
-                        
-                        showToast("✔ 商品情報を自動表示しました");
+                        document.getElementById('date-input').value = res.data["日付"] || "---";
+                        document.getElementById('name-input').value = res.data["商品名"] || "---";
+                        document.getElementById('qty-input').value = res.data["数量"] || "---";
+                        showToast("✔ 指図情報を自動表示しました");
                         currentStatus = "未開始";
                         updateButtonStates();
                     } else {
                         showToast("⚠ 指図情報が見つかりません。新規入力として処理します。");
-                        document.getElementById('date-input').value = "新規";
-                        document.getElementById('name-input').value = "未登録製品";
+                        document.getElementById('date-input').value = "新規受付";
+                        document.getElementById('name-input').value = "手動登録製品";
                         document.getElementById('qty-input').value = "1";
                         currentStatus = "未開始";
                         updateButtonStates();
                     }
                 })
                 .catch(err => {
-                    console.error(err);
-                    showToast("❌ サーバーとの通信に失敗しました。");
+                    showToast("❌ データの自動取得に失敗しました。");
+                    currentStatus = "未開始";
+                    updateButtonStates();
                 });
         }
 
@@ -228,7 +218,6 @@
                 } else {
                     currentStatus = "終了済";
                     setTimeout(() => {
-                        // 完了したら画面をクリアして次のスキャンへ
                         document.getElementById('order-input').value = "";
                         document.getElementById('date-input').value = "---";
                         document.getElementById('name-input').value = "---";
