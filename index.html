@@ -88,8 +88,8 @@
 
     <script src="https://cdn.jsdelivr.net/npm/@zxing/library@0.19.1/umd/index.min.js"></script>
     <script>
-        // 🔗 102行目：最新のGASのURLをこの下の "" の中に貼り付けます
-        const API_URL = "ここに新しくデプロイしたウェブアプリURLを貼り付けます";
+        // 🔗 102行目：手順1でコピーした最新のGASのURLをここに貼り付けます
+        const API_URL = "ここにURL";
         
         let codeReader = null;
         let selectedDeviceId = null;
@@ -183,7 +183,7 @@
                     }
                 })
                 .catch(err => {
-                    showToast("❌ データの自動取得に失敗しました。");
+                    showToast("❌ 通信ブロックを解除中...もう一度「確定」を押してください。");
                     currentStatus = "未開始";
                     updateButtonStates();
                 });
