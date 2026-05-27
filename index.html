@@ -88,8 +88,8 @@
 
     <script src="https://cdn.jsdelivr.net/npm/@zxing/library@0.19.1/umd/index.min.js"></script>
     <script>
-        // 🔗 102行目：手順1でコピーした最新のGASのURLをここに貼り付けます
-        const API_URL = "https://script.google.com/macros/s/AKfycbyVDbSrBdLA63F-pb07u4hkhA8diEVpiWklF2jme7KsLaUALxgW7TiYDMnof2WY7ZTYxQ/exec";
+        // 🔗 102行目：最新のGASのURLをこの下の "" の中に貼り付けます
+        const API_URL = "ここに新しくデプロイしたウェブアプリURLを貼り付けます";
         
         let codeReader = null;
         let selectedDeviceId = null;
@@ -123,7 +123,6 @@
                     codeReader.decodeFromVideoDevice(selectedDeviceId, 'video', (result, err) => {
                         if (result) {
                             let scannedText = result.text.trim();
-                            // スキャン時も分かりやすいように最初から頭6桁だけを切り出します
                             let cleanText = scannedText.toUpperCase().startsWith("S") ? scannedText.substring(1) : scannedText;
                             let core6Digit = cleanText.substring(0, 6);
 
@@ -157,7 +156,6 @@
                 showToast("発注Noを入力してください。");
                 return;
             }
-            // 手動入力時も頭の6桁だけを抜き出します
             let cleanVal = orderVal.toUpperCase().startsWith("S") ? orderVal.substring(1) : orderVal;
             let core6Digit = cleanVal.substring(0, 6);
             document.getElementById('order-input').value = core6Digit;
