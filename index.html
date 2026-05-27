@@ -87,8 +87,8 @@
 
     <script src="https://cdn.jsdelivr.net/npm/@zxing/library@0.19.1/umd/index.min.js"></script>
     <script>
-        // 🔗 102行目：最新のGASのURLをこの下の "" の中に貼り付けます
-        const API_URL = "ここにURL";
+        // 🔗 102行目：手順1の最後に生成された最新のGASのURLをこの下の "" の中に貼り付けてください
+        const API_URL = "https://script.google.com/macros/s/AKfycbyVDbSrBdLA63F-pb07u4hkhA8diEVpiWklF2jme7KsLaUALxgW7TiYDMnof2WY7ZTYxQ/exec";
         
         let codeReader = null;
         let selectedDeviceId = null;
@@ -139,12 +139,11 @@
             document.getElementById('camera-preview').style.display = 'none';
         }
 
-        // 💡「確定」ボタンなしで、手打ち入力した瞬間に一発で自動検索を走らせる高度な処理
+        // 💡「確定」ボタンなしで、手打ちした瞬間に一発で自動検索を走らせる高度な処理
         let searchTimeout = null;
         function triggerInstantSearch() {
             const orderVal = document.getElementById('order-input').value.trim();
             
-            // 文字が空になったら表示をリセット
             if (!orderVal) {
                 document.getElementById('name-input').value = "---";
                 document.getElementById('qty-input').value = "---";
@@ -153,7 +152,6 @@
                 return;
             }
 
-            // タイピング中の連打を防ぐため、入力が止まってから検索を実行する安全装置
             clearTimeout(searchTimeout);
             searchTimeout = setTimeout(() => {
                 let cleanVal = orderVal.toUpperCase().startsWith("S") ? orderVal.substring(1) : orderVal;
@@ -164,7 +162,7 @@
                     document.getElementById('order-input').value = core6Digit;
                     fetchOrderInfo(core6Digit);
                 }
-            }, 500); // 0.5秒タイピングが止まったら自動確定
+            }, 400); // 0.4秒タイピングが止まったら自動確定
         }
 
         function fetchOrderInfo(orderNo) {
@@ -187,19 +185,9 @@
                     }
                 })
                 .catch(err => {
-                    // CORSブロック対策：エラーが出た場合は自動で1回だけ裏側で再読込をかけて繋ぎにいきます
-                    fetch(`${API_URL}?action=getOne&orderNo=${orderNo}`)
-                    .then(r => r.json())
-                    .then(r => {
-                        if (r.status === "success") {
-                            document.getElementById('name-input').value = r.data["商品名"];
-                            document.getElementById('qty-input').value = r.data["数量"];
-                            showToast("✔ 接続成功：自動表示しました");
-                            updateButtonStates();
-                        }
-                    }).catch(e => {
-                        showToast("❌ データの自動取得に失敗しました。");
-                    });
+                    showToast("❌ データの取得に失敗しました。もう一度入力し直してください。");
+                    currentStatus = "未開始";
+                    updateButtonStates();
                 });
         }
 
