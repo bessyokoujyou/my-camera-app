@@ -87,8 +87,8 @@
 
     <script src="https://cdn.jsdelivr.net/npm/@zxing/library@0.19.1/umd/index.min.js"></script>
     <script>
-        // 🔗 102行目：最新のGASのURLをこの下の "" の中に貼り付けます
-        const API_URL = "ここにURL";
+        // ⚠️【最重要】この下の "" の中に、さきほど手順1で新しく作った「最新のウェブアプリURL」を上書き貼り付けしてください！
+        const API_URL = "https://script.google.com/macros/s/AKfycbyVDbSrBdLA63F-pb07u4hkhA8diEVpiWklF2jme7KsLaUALxgW7TiYDMnof2WY7ZTYxQ/exec";
         
         let codeReader = null;
         let selectedDeviceId = null;
@@ -156,6 +156,7 @@
                 let cleanVal = orderVal.toUpperCase().startsWith("S") ? orderVal.substring(1) : orderVal;
                 let core6Digit = cleanVal.substring(0, 6);
                 
+                // 6桁の数字が打ち込まれた瞬間、確定ボタンなしで自動通信
                 if (core6Digit.length >= 6) {
                     document.getElementById('order-input').value = core6Digit;
                     fetchOrderInfo(core6Digit);
@@ -168,7 +169,6 @@
             fetch(`${API_URL}?action=getOne&orderNo=${orderNo}`)
                 .then(res => res.json())
                 .then(res => {
-                    // 💡【ここを大修正！】GASから届いた order.name と order.qty の引き出しをそのままガチッと受け取ります
                     if (res.status === "success" && res.order) {
                         document.getElementById('name-input').value = res.order.name || "---";
                         document.getElementById('qty-input').value = res.order.qty || "---";
