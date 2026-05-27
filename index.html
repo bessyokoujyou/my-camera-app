@@ -1,112 +1,193 @@
-const SPREADSHEET_ID = "1RFX22MX4iWc2Vwh2ykAnApvQ3TTupUFikr_gTgh3qxQ";
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>SPG 作業日報アプリ（連打防止版）</title>
+    <style>
+        body { font-family: 'Meiryo', sans-serif; margin: 0; padding: 12px; background-color: #f4f7f6; color: #333; }
+        .card { background: #fff; border-radius: 8px; padding: 15px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); margin-bottom: 12px; }
+        h2 { margin-top: 0; color: #0056b3; font-size: 16px; border-bottom: 2px solid #0056b3; padding-bottom: 5px; }
+        label { display: block; font-size: 14px; font-weight: bold; margin-top: 10px; margin-bottom: 4px; color: #495057; }
+        .btn { display: block; width: 100%; padding: 12px; background: #0056b3; color: white; border: none; border-radius: 5px; font-size: 16px; font-weight: bold; text-align: center; cursor: pointer; box-sizing: border-box; }
+        .btn:active { background: #004085; }
+        .btn-start { background: #28a745; }
+        .btn-start:active { background: #1e7e34; }
+        .btn-end { background: #dc3545; }
+        .btn-end:active { background: #bd2130; }
+        .btn:disabled { background: #6c757d !important; opacity: 0.6; cursor: not-allowed; }
+        input[type="text"], input[type="number"], select { width: 100%; padding: 10px; font-size: 16px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; background: #fff; }
+        input[readonly] { background: #e9ecef; color: #495057; font-weight: bold; }
+        #camera-preview { width: 100%; max-height: 220px; background: #000; border-radius: 6px; overflow: hidden; margin-bottom: 10px; display: none; }
+        video { width: 100%; height: 100%; object-fit: cover; }
+        .flex-container { display: flex; gap: 10px; margin-top: 10px; }
+        .toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.85); color: #fff; padding: 10px 20px; border-radius: 20px; font-size: 14px; z-index: 10000; display: none; text-align: center; width: 80%; max-width: 300px; }
+        .toast.show { display: block; }
+    </style>
+</head>
+<body>
 
-// Webアプリへのアクセス（GET通信）を処理
-function doGet(e) {
-  const action = e.parameter.action;
-  if (action === "ping") {
-    return ContentService.createTextOutput(JSON.stringify({ status: "success", message: "pong" })).setMimeType(ContentService.MimeType.JSON);
-  }
-  if (action === "getShiji") {
-    return getShijiData();
-  }
-  if (action === "getOne") {
-    return getOneOrder(e.parameter.orderNo);
-  }
-  return ContentService.createTextOutput(JSON.stringify({ status: "error", message: "Invalid action" })).setMimeType(ContentService.MimeType.JSON);
-}
+    <div class="card">
+        <h2>📷 指図書バーコードスキャン</h2>
+        <div id="camera-preview">
+            <video id="video" autoplay playsinline></video>
+        </div>
+        <button class="btn" id="scan-btn" onclick="startCamera()">カメラを起動してスキャン</button>
+    </div>
 
-// データ送信（POST通信）を処理
-function doPost(e) {
-  try {
-    const postData = JSON.parse(e.postData.contents);
-    if (postData.action === "save") {
-      return saveNippo(postData.data);
-    }
-  } catch(error) {
-    return ContentService.createTextOutput(JSON.stringify({ status: "error", message: error.toString() })).setMimeType(ContentService.MimeType.JSON);
-  }
-}
-
-// 【スマホ連携】新・日報保存システム（同じ発注Noなら1行に開始と終了をまとめる）
-function saveNippo(data) {
-  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
-  let sheet = ss.getSheets().find(s => s.getSheetId() === 1793578510);
-  if (!sheet) {
-    sheet = ss.getSheetByName("日報集計") || ss.insertSheet("日報集計");
-    // 初めてシートを作る場合はヘッダーをセット
-    sheet.appendRow(["記録日時", "発注No", "生産ライン場所", "作業人数", "開始時刻", "終了時刻", "稼働時間(分)"]);
-  }
-  
-  const orderNo = String(data.orderNo || "").trim();
-  const line = data.line || "";
-  const workers = data.workers || 1;
-  const type = data.type || ""; // 「開始」または「終了」
-  const now = new Date();
-
-  const values = sheet.getDataRange().getValues();
-  
-  if (type === "開始") {
-    // 「開始」の場合は、新しい行として日報に追記する
-    const rowData = [
-      now,      // A: 記録日時
-      orderNo,  // B: 発注No
-      line,     // C: 生産ライン場所
-      workers,  // D: 作業人数
-      now,      // E: 開始時刻
-      "",       // F: 終了時刻（最初は空っぽ）
-      ""        // G: 稼稼働時間（最初は空っぽ）
-    ];
-    sheet.appendRow(rowData);
-    return ContentService.createTextOutput(JSON.stringify({ status: "success", message: "Start recorded" })).setMimeType(ContentService.MimeType.JSON);
-  
-  } else if (type === "終了") {
-    // 「終了」の場合は、同じ発注Noで「終了時刻がまだ書かれていない行」を下から探して書き込む
-    for (let i = values.length - 1; i >= 1; i--) {
-      if (String(values[i][1]).trim() === orderNo && values[i][5] === "") {
-        // 終了時刻をF列（6番目）に書き込み
-        sheet.getRange(i + 1, 6).setValue(now);
+    <div class="card">
+        <h2>📝 実績入力</h2>
         
-        // 【自動連動計算】開始時刻から何分かかったかを計算してG列（7番目）に書き込み
-        const startTime = new Date(values[i][4]);
-        const diffMinutes = Math.round((now - startTime) / 1000 / 60);
-        sheet.getRange(i + 1, 7).setValue(diffMinutes);
+        <label>読込データ (発注No):</label>
+        <input type="text" id="order-input" readonly placeholder="指図書をスキャンしてください">
         
-        return ContentService.createTextOutput(JSON.stringify({ status: "success", message: "End recorded and calculated" })).setMimeType(ContentService.MimeType.JSON);
-      }
-    }
-    
-    // 万が一、開始データが見つからなかった場合は新規行として終了だけ記録
-    sheet.appendRow([now, orderNo, line, workers, "", now, ""]);
-    return ContentService.createTextOutput(JSON.stringify({ status: "success", message: "End recorded as new row" })).setMimeType(ContentService.MimeType.JSON);
-  }
-}
+        <label>生産ライン場所:</label>
+        <select id="line-select">
+            <option value="第1ライン">第1ライン</option>
+            <option value="第2ライン">第2ライン</option>
+            <option value="第3ライン">第3ライン</option>
+            <option value="梱包ライン">梱包ライン</option>
+        </select>
+        
+        <label>作業人数 (名):</label>
+        <input type="number" id="workers-input" value="1" min="1">
+        
+        <div class="flex-container">
+            <button class="btn btn-start" id="start-btn" onclick="sendNippo('開始')" disabled>▶ 作業開始</button>
+            <button class="btn btn-end" id="end-btn" onclick="sendNippo('終了')" disabled>■ 作業終了</button>
+        </div>
+    </div>
 
-// 加工指図残からデータ取得 (gid: 85631405)
-function getShijiData() {
-  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
-  const sheet = ss.getSheets().find(s => s.getSheetId() === 85631405) || ss.getSheets()[0];
-  const data = sheet.getDataRange().getValues();
-  const headers = data[0];
-  const rows = data.slice(1);
-  const result = rows.map(row => {
-    let obj = {};
-    headers.forEach((header, index) => { obj[header] = row[index]; });
-    return obj;
-  });
-  return ContentService.createTextOutput(JSON.stringify({ status: "success", data: result })).setMimeType(ContentService.MimeType.JSON);
-}
+    <div id="toast" class="toast"></div>
 
-// 発注Noから1件取得
-function getOneOrder(orderNo) {
-  if (!orderNo) return ContentService.createTextOutput(JSON.stringify({ status: "error", message: "Required" })).setMimeType(ContentService.MimeType.JSON);
-  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
-  const sheet = ss.getSheets().find(s => s.getSheetId() === 85631405) || ss.getSheets()[0];
-  const data = sheet.getDataRange().getValues();
-  const headers = data[0];
-  const rows = data.slice(1);
-  const foundRow = rows.find(row => String(row[0]).trim() === String(orderNo).trim());
-  if (!foundRow) return ContentService.createTextOutput(JSON.stringify({ status: "error", message: "Not found" })).setMimeType(ContentService.MimeType.JSON);
-  let resultObj = {};
-  headers.forEach((header, index) => { resultObj[header] = foundRow[index]; });
-  return ContentService.createTextOutput(JSON.stringify({ status: "success", data: resultObj })).setMimeType(ContentService.MimeType.JSON);
-}
+    <script src="https://cdn.jsdelivr.net/npm/@zxing/library@0.19.1/umd/index.min.js"></script>
+    <script>
+        const API_URL = "https://script.google.com/macros/s/AKfycbyVDbSrBdLA63F-pb07u4hkhA8diEVpiWklF2jme7KsLaUALxgW7TiYDMnof2WY7ZTYxQ/exec";
+        
+        let codeReader = null;
+        let selectedDeviceId = null;
+        let currentStatus = "未開始";
+
+        window.addEventListener('load', () => {
+            codeReader = new ZXing.BrowserMultiFormatReader();
+        });
+
+        function startCamera() {
+            const preview = document.getElementById('camera-preview');
+            preview.style.display = 'block';
+            codeReader.listVideoInputDevices()
+                .then((videoInputDevices) => {
+                    selectedDeviceId = videoInputDevices[0].deviceId;
+                    if (videoInputDevices.length > 1) {
+                        for(let device of videoInputDevices){
+                            if(device.label.toLowerCase().includes('back') || device.label.toLowerCase().includes('environment')){
+                                selectedDeviceId = device.deviceId;
+                                break;
+                            }
+                        }
+                    }
+                    showToast("カメラ起動中...");
+                    codeReader.decodeFromVideoDevice(selectedDeviceId, 'video', (result, err) => {
+                        if (result) {
+                            const scannedText = result.text.trim();
+                            const cleanOrderNo = (scannedText.endsWith("00") || scannedText.endsWith("01")) ? scannedText.slice(0, -2) : scannedText;
+                            
+                            document.getElementById('order-input').value = cleanOrderNo;
+                            showToast("✔ 指図書読込: " + cleanOrderNo);
+                            
+                            currentStatus = "未開始";
+                            updateButtonStates();
+                            stopCamera();
+                        }
+                    });
+                }).catch(err => showToast("❌ カメラ起動失敗"));
+        }
+
+        function stopCamera() {
+            codeReader.reset();
+            document.getElementById('camera-preview').style.display = 'none';
+        }
+
+        function updateButtonStates() {
+            const startBtn = document.getElementById('start-btn');
+            const endBtn = document.getElementById('end-btn');
+            const orderVal = document.getElementById('order-input').value;
+
+            if (!orderVal) {
+                startBtn.disabled = true;
+                endBtn.disabled = true;
+                return;
+            }
+
+            if (currentStatus === "未開始") {
+                startBtn.disabled = false;
+                endBtn.disabled = true;
+            } else if (currentStatus === "開始中") {
+                startBtn.disabled = true;
+                endBtn.disabled = false;
+            } else if (currentStatus === "終了済") {
+                startBtn.disabled = true;
+                endBtn.disabled = true;
+            }
+        }
+
+        function sendNippo(type) {
+            const orderNo = document.getElementById('order-input').value;
+            const line = document.getElementById('line-select').value;
+            const workers = document.getElementById('workers-input').value;
+
+            if(!orderNo) {
+                showToast("指図書をスキャンしてください");
+                return;
+            }
+
+            const payload = {
+                action: "save",
+                data: {
+                    orderNo: orderNo,
+                    line: line,
+                    workers: workers,
+                    type: type
+                }
+            };
+
+            showToast(type + "データを送信中...");
+            
+            document.getElementById('start-btn').disabled = true;
+            document.getElementById('end-btn').disabled = true;
+
+            fetch(API_URL, {
+                method: "POST",
+                mode: "no-cors",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(payload)
+            })
+            .then(() => {
+                showToast("✅ " + type + " 実績を記録しました");
+                if (type === '開始') {
+                    currentStatus = "開始中";
+                } else {
+                    currentStatus = "終了済";
+                    setTimeout(() => {
+                        document.getElementById('order-input').value = "";
+                        currentStatus = "未開始";
+                        updateButtonStates();
+                    }, 2000);
+                }
+                updateButtonStates();
+            })
+            .catch(err => {
+                showToast("❌ 送信エラーが発生しました");
+                updateButtonStates();
+            });
+        }
+
+        function showToast(msg) {
+            const toast = document.getElementById('toast');
+            toast.textContent = msg;
+            toast.classList.add('show');
+            setTimeout(() => { toast.classList.remove('show'); }, 3000);
+        }
+    </script>
+</body>
+</html>
