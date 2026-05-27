@@ -84,7 +84,7 @@
 
     <script src="https://cdn.jsdelivr.net/npm/@zxing/library@0.19.1/umd/index.min.js"></script>
     <script>
-        // 🔗 スクリーンショット(272)で完璧に入力されていた、あなたの本物のGAS URLです
+        // 🔗 102行目：手順1で新しくコピーしたウェブアプリURLを、この下の "" の中に綺麗に貼り付けてください
         const API_URL = "https://script.google.com/macros/s/AKfycbyVDbSrBdLA63F-pb07u4hkhA8diEVpiWklF2jme7KsLaUALxgW7TiYDMnof2WY7ZTYxQ/exec";
         
         let codeReader = null;
@@ -94,7 +94,7 @@
         window.addEventListener('load', () => {
             codeReader = new ZXing.BrowserMultiFormatReader();
             
-            // アプリを開いた瞬間に、今日の日付を自動でセットする仕組み
+            // 💡 アプリを開いた瞬間に、今日の日付（入力当日）を最初から自動で固定セットする処理
             const today = new Date();
             const yyyy = today.getFullYear();
             const mm = String(today.getMonth() + 1).padStart(2, '0');
@@ -143,6 +143,7 @@
                 .then(res => res.json())
                 .then(res => {
                     if (res.status === "success" && res.data) {
+                        // 商品名（J・K列合体値）と、数量（L列の値）をセットします
                         document.getElementById('name-input').value = res.data["商品名"] || "---";
                         document.getElementById('qty-input').value = res.data["数量"] || "---";
                         showToast("✔ 指図残シートと100%連動しました");
@@ -182,6 +183,9 @@
                 endBtn.disabled = false;
             } else if (currentStatus === "終了済") {
                 startBtn.disabled = true;
+                document.getElementById('order-input').value = "";
+                document.getElementById('name-input').value = "---";
+                document.getElementById('qty-input').value = "---";
                 endBtn.disabled = true;
             }
         }
@@ -224,9 +228,6 @@
                 } else {
                     currentStatus = "終了済";
                     setTimeout(() => {
-                        document.getElementById('order-input').value = "";
-                        document.getElementById('name-input').value = "---";
-                        document.getElementById('qty-input').value = "---";
                         currentStatus = "未開始";
                         updateButtonStates();
                     }, 2000);
