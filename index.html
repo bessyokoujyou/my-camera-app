@@ -73,8 +73,8 @@
 
     <script src="https://cdn.jsdelivr.net/npm/@zxing/library@0.19.1/umd/index.min.js"></script>
     <script>
-        // ⚠️ 上記の「鉛筆マークからの更新」で確認した固定URLをここに一度だけ貼り付けてください
-       const API_URL =https://script.google.com/macros/s/AKfycbyJf8RNubn9SWobgOhyWG1vzK9xk3j5RX5H8Xvu5pbalVfTif8ZNQ6DXD_Sxtx6q39gZA/exec
+        // ⚠️ 新しくデプロイして取得した「ウェブアプリ」のURLをここに貼り付けてください
+        const API_URL = "https://script.google.com/macros/s/AKfycbyVDbSrBdLA63F-pb07u4hkhA8diEVpiWklF2jme7KsLaUALxgW7TiYDMnof2WY7ZTYxQ/exec";
 
         let codeReader = null;
         let selectedDeviceId = null;
@@ -149,15 +149,15 @@
             fetch(`${API_URL}?orderNo=${orderNo}`)
                 .then(res => res.json())
                 .then(res => {
-                    if ((res.status === "success" || res.status === "ok") && res.order) {
+                    if (res.status === "success" && res.order) {
                         document.getElementById('date-input').value = res.order.date || "---";
                         document.getElementById('name-input').value = res.order.name || "---";
                         document.getElementById('qty-input').value = res.order.qty || "---";
-                        showToast("✔ 指図残シートと100%連動しました");
+                        showToast("✔ 指図残シートの情報と連動しました");
                         currentStatus = "未開始";
                         updateButtonStates();
                     } else {
-                        showToast(res.message);
+                        showToast(res.message || "不一致エラー");
                         document.getElementById('name-input').value = "不一致エラー";
                         document.getElementById('qty-input').value = "---";
                         currentStatus = "未開始";
@@ -165,8 +165,8 @@
                     }
                 })
                 .catch(err => {
-                    showToast("❌ データの取得に失敗しました。");
-                    document.getElementById('name-input').value = "不一致エラー";
+                    showToast("❌ データの取得に失敗しました。URLを確認してください。");
+                    document.getElementById('name-input').value = "通信エラー";
                     document.getElementById('qty-input').value = "---";
                     currentStatus = "未開始";
                     updateButtonStates();
@@ -177,7 +177,9 @@
             const startBtn = document.getElementById('start-btn');
             const endBtn = document.getElementById('end-btn');
             const orderVal = document.getElementById('order-input').value;
-            if (!orderVal) {
+            const nameVal = document.getElementById('name-input').value;
+            
+            if (!orderVal || nameVal === "不一致エラー" || nameVal === "通信エラー" || nameVal === "---") {
                 startBtn.disabled = true;
                 endBtn.disabled = true;
                 return;
@@ -190,10 +192,10 @@
                 endBtn.disabled = false;
             } else if (currentStatus === "終了済") {
                 startBtn.disabled = true;
+                endBtn.disabled = true;
                 document.getElementById('order-input').value = "";
                 document.getElementById('name-input').value = "---";
                 document.getElementById('qty-input').value = "---";
-                endBtn.disabled = true;
             }
         }
 
