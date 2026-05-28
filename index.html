@@ -217,19 +217,63 @@
             }
         }
 
+        // 💡 修正箇所：実際のGAS APIにPOST送信するように変更しました
         function sendNippo(type) {
-            // 今回は通信テスト用のため、画面上だけで保存成功の動きをさせます
-            showToast("✅ " + type + " を保存しました");
-            if (type === '開始') {
-                currentStatus = "開始中";
-            } else {
-                currentStatus = "終了済";
-                setTimeout(() => {
-                    currentStatus = "未開始";
+            const orderNo = document.getElementById('order-input').value;
+            const line = document.getElementById('line-select').value;
+            const workers = document.getElementById('workers-input').value;
+            const dateVal = document.getElementById('date-input').value;
+            const nameVal = document.getElementById('name-input').value;
+            const qtyVal = document.getElementById('qty-input').value;
+
+            // 送信ペイロードの作成
+            const payload = {
+                action: "save",
+                data: {
+                    orderNo: orderNo,
+                    line: line,
+                    workers: workers,
+                    type: type,
+                    date: dateVal,
+                    productName: nameVal,
+                    qty: qtyVal
+                }
+            };
+
+            showToast(type + "時刻を記録中...");
+            
+            // 通信中はすべてのボタンを一時的に無効化（二重送信防止）
+            document.getElementById('start-btn').disabled = true;
+            document.getElementById('end-btn').disabled = true;
+
+            // GASのAPI（doPost）へリクエストを送信
+            fetch(API_URL, {
+                method: "POST",
+                mode: "no-cors",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(payload)
+            })
+            .then(() => {
+                showToast("✅ " + type + " を保存しました");
+                
+                // 状態（currentStatus）の更新
+                if (type === '開始') {
+                    currentStatus = "開始中";
                     updateButtonStates();
-                }, 2000);
-            }
-            updateButtonStates();
+                } else {
+                    currentStatus = "終了済";
+                    updateButtonStates();
+                    // 完了時は2秒後に画面表示をクリアして「未開始」にリセット
+                    setTimeout(() => {
+                        currentStatus = "未開始";
+                        updateButtonStates();
+                    }, 2000);
+                }
+            })
+            .catch(err => {
+                showToast("❌ 保存エラーが発生しました。");
+                updateButtonStates(); // エラー時はボタン状態を再判定して復帰
+            });
         }
 
         function showToast(msg) {
