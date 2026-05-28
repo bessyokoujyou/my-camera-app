@@ -73,7 +73,7 @@
 
     <script src="https://cdn.jsdelivr.net/npm/@zxing/library@0.19.1/umd/index.min.js"></script>
     <script>
-        // ⚠️ 最新の再デプロイURLが異なる場合は、この下の "" の中を書き換えてください
+        // ⚠️ 先ほど再デプロイした最新のウェブアプリURL（画像304で発行されたものなど）をここに貼り付けてください
         const API_URL = "https://script.google.com/macros/s/AKfycbyVDbSrBdLA63F-pb07u4hkhA8diEVpiWklF2jme7KsLaUALxgW7TiYDMnof2WY7ZTYxQ/exec";
 
         let codeReader = null;
@@ -144,6 +144,7 @@
             }, 400);
         }
 
+        // 💡 修正箇所：actionパラメータを完全に排除し、?orderNo= の形だけで通信します
         function fetchOrderInfo(orderNo) {
             showToast("指図残シートから情報を照合中...");
             fetch(`${API_URL}?orderNo=${orderNo}`)
