@@ -73,7 +73,7 @@
 
     <script src="https://cdn.jsdelivr.net/npm/@zxing/library@0.19.1/umd/index.min.js"></script>
     <script>
-        // 🔑 14:22に新しく開通した「本物のウェブアプリURL」に書き換え済みです
+        // 🔑 14:22に開通した本物のウェブアプリURL（固定）
         const API_URL = "https://script.google.com/macros/s/AKfycbyJf8RNubn9SWobgOhyWG1vzK9xk3j5RX5H8Xvu5pbalVfTif8ZNQ6DXD_Sxtx6q39gZA/exec";
 
         let codeReader = null;
@@ -92,18 +92,28 @@
         function startCamera() {
             const preview = document.getElementById('camera-preview');
             preview.style.display = 'block';
+            
+            // 💡 カメラデバイスのリストアップと最適なカメラ（背面カメラ）の自動選定ロジックを強化
             codeReader.listVideoInputDevices()
                 .then((videoInputDevices) => {
+                    if (!videoInputDevices || videoInputDevices.length === 0) {
+                        showToast("❌ 使用可能なカメラが見つかりません。");
+                        return;
+                    }
+                    
                     selectedDeviceId = videoInputDevices[0].deviceId;
-                    if (videoInputDevices.length > 1) {
-                        for(let device of videoInputDevices){
-                            if(device.label.toLowerCase().includes('back') || device.label.toLowerCase().includes('environment')){
-                                selectedDeviceId = device.deviceId;
-                                break;
-                            }
+                    // スマホの背面カメラ（environment）や外カメラ（back）を優先検索
+                    for(let device of videoInputDevices){
+                        const label = device.label.toLowerCase();
+                        if(label.includes('back') || label.includes('environment') || label.includes('背面') || label.includes('外カメラ')){
+                            selectedDeviceId = device.deviceId;
+                            break;
                         }
                     }
+                    
                     showToast("バーコードを枠内に映してください。");
+                    
+                    // 💡 スキャン開始
                     codeReader.decodeFromVideoDevice(selectedDeviceId, 'video', (result, err) => {
                         if (result) {
                             let scannedText = result.text.trim();
@@ -114,12 +124,18 @@
                             fetchOrderInfo(core6Digit);
                             stopCamera();
                         }
+                        // err はスキャン中の毎フレームで発生するため、ここでは無視（ログ出力のみ、または何もしない）
                     });
-                }).catch(err => showToast("❌ カメラの起動に失敗しました。"));
+                }).catch(err => {
+                    console.error(err);
+                    showToast("❌ カメラ起動に失敗。ブラウザの「カメラ許可」を確認してください。");
+                });
         }
 
         function stopCamera() {
-            codeReader.reset();
+            if (codeReader) {
+                codeReader.reset();
+            }
             document.getElementById('camera-preview').style.display = 'none';
         }
 
@@ -192,4 +208,67 @@
                 startBtn.disabled = true;
                 document.getElementById('order-input').value = "";
                 document.getElementById('name-input').value = "---";
-                document.getElementById('qty-input
+                document.getElementById('qty-input').value = "---";
+                endBtn.disabled = true;
+            }
+        }
+
+        function sendNippo(type) {
+            const orderNo = document.getElementById('order-input').value;
+            const line = document.getElementById('line-select').value;
+            const workers = document.getElementById('workers-input').value;
+            const dateVal = document.getElementById('date-input').value;
+            const nameVal = document.getElementById('name-input').value;
+            const qtyVal = document.getElementById('qty-input').value;
+
+            const payload = {
+                action: "save",
+                data: {
+                    orderNo: orderNo,
+                    line: line,
+                    workers: workers,
+                    type: type,
+                    date: dateVal,
+                    productName: nameVal,
+                    qty: qtyVal
+                }
+            };
+
+            showToast(type + "時刻を記録中...");
+            document.getElementById('start-btn').disabled = true;
+            document.getElementById('end-btn').disabled = true;
+
+            fetch(API_URL, {
+                method: "POST",
+                mode: "no-cors",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(payload)
+            })
+            .then(() => {
+                showToast("✅ " + type + " を保存しました");
+                if (type === '開始') {
+                    currentStatus = "開始中";
+                } else {
+                    currentStatus = "終了済";
+                    setTimeout(() => {
+                        currentStatus = "未開始";
+                        updateButtonStates();
+                    }, 2000);
+                }
+                updateButtonStates();
+            })
+            .catch(err => {
+                showToast("❌ 保存エラーが発生しました。");
+                updateButtonStates();
+            });
+        }
+
+        function showToast(msg) {
+            const toast = document.getElementById('toast');
+            toast.textContent = msg;
+            toast.classList.add('show');
+            setTimeout(() => { toast.classList.remove('show'); }, 4000);
+        }
+    </script>
+</body>
+</html>
