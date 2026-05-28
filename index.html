@@ -9,6 +9,7 @@
             --primary: #0056b3;
             --success: #28a745;
             --danger: #dc3545;
+            --setup: #fd7e14;
             --bg: #f4f7f6;
             --card-bg: #ffffff;
         }
@@ -17,7 +18,8 @@
         h2 { margin-top: 0; color: var(--primary); font-size: 16px; border-bottom: 3px solid var(--primary); padding-bottom: 6px; display: flex; align-items: center; gap: 6px; }
         label { display: block; font-size: 14px; font-weight: bold; margin-top: 12px; margin-bottom: 4px; color: #495057; }
         .btn { display: block; width: 100%; padding: 14px; color: white; border: none; border-radius: 8px; font-size: 16px; font-weight: bold; text-align: center; cursor: pointer; box-sizing: border-box; transition: background 0.2s, transform 0.1s; }
-        .btn-scan { background: var(--primary); box-shadow: 0 3px 6px rgba(0,86,179,0.2); }
+        .btn-scan { background: var(--primary); }
+        .btn-setup { background: var(--setup); box-shadow: 0 3px 6px rgba(253,126,20,0.3); }
         .btn-start { background: var(--success); box-shadow: 0 3px 6px rgba(40,167,69,0.2); }
         .btn-end { background: var(--danger); box-shadow: 0 3px 6px rgba(220,53,69,0.2); }
         .btn:active { transform: scale(0.98); }
@@ -27,26 +29,24 @@
         .manual-input { background: #ffffff !important; color: #000000 !important; border: 2px solid var(--primary) !important; text-align: center; }
         #camera-preview { width: 100%; max-height: 220px; background: #000; border-radius: 8px; overflow: hidden; margin-bottom: 12px; display: none; border: 2px solid var(--primary); }
         video { width: 100%; height: 100%; object-fit: cover; }
-        .flex-container { display: flex; gap: 12px; margin-top: 16px; }
+        .btn-grid { display: grid; grid-template-columns: 1fr; gap: 10px; margin-top: 16px; }
         .toast { position: fixed; top: 40%; left: 50%; transform: translate(-50%, -50%); background: rgba(0,0,0,0.85); color: #fff; padding: 14px 24px; border-radius: 25px; font-size: 15px; font-weight: bold; z-index: 10000; display: none; text-align: center; width: 85%; box-shadow: 0 5px 15px rgba(0,0,0,0.3); }
         .toast.show { display: block; }
+        .time-info { background: #f8f9fa; border-radius: 8px; padding: 10px; margin-top: 10px; font-size: 14px; color: #495057; }
+        .time-info span { font-weight: bold; color: var(--primary); }
     </style>
 </head>
 <body>
     <div class="card">
         <h2>📷 加工指図書バーコードスキャン</h2>
-        <div id="camera-preview">
-            <video id="video" autoplay playsinline></video>
-        </div>
-        <button class="btn btn-scan" id="scan-btn" onclick="startCamera()">カメラを起動してスキャン</button>
+        <div id="camera-preview"><video id="video" autoplay playsinline></video></div>
+        <button class="btn btn-scan" onclick="startCamera()">カメラを起動してスキャン</button>
     </div>
 
     <div class="card">
         <h2>📝 日報入力内容</h2>
         <label>発注No:</label>
-        <div style="display: flex; gap: 8px;">
-            <input type="text" id="order-input" class="manual-input" placeholder="6桁の数字を入力またはスキャン" oninput="triggerInstantSearch()">
-        </div>
+        <input type="text" id="order-input" class="manual-input" placeholder="6桁の数字を入力またはスキャン" oninput="triggerInstantSearch()">
         <label>日付:</label>
         <input type="text" id="date-input" class="auto-field" readonly>
         <label>商品名:</label>
@@ -63,8 +63,15 @@
         </select>
         <label>作業人数 (名):</label>
         <input type="number" id="workers-input" value="1" min="1" max="20">
-        <div class="flex-container">
-            <button class="btn btn-start" id="start-btn" onclick="sendNippo('開始')" disabled>▶ 「開始」ボタン</button>
+
+        <div id="time-info" class="time-info" style="display:none;">
+            段取り時間: <span id="setup-time-display">---</span> 分　
+            稼働時間: <span id="work-time-display">---</span> 分
+        </div>
+
+        <div class="btn-grid">
+            <button class="btn btn-setup" id="setup-btn" onclick="sendNippo('段取り開始')" disabled>⚙ 「段取り開始」ボタン</button>
+            <button class="btn btn-start" id="start-btn" onclick="sendNippo('開始')" disabled>▶ 「作業開始」ボタン</button>
             <button class="btn btn-end" id="end-btn" onclick="sendNippo('完了')" disabled>■ 「完了」ボタン</button>
         </div>
     </div>
@@ -73,200 +80,184 @@
 
     <script src="https://cdn.jsdelivr.net/npm/@zxing/library@0.19.1/umd/index.min.js"></script>
     <script>
-        // 🔑 14:22に開通した本物のウェブアプリURL（固定）
-        const API_URL = "https://script.google.com/macros/s/【新しいURL】/exec";
+        // 🔑 開通している最新のウェブアプリURL
+        const API_URL = "https://script.google.com/macros/s/AKfycbyJf8RNubn9SWobgOhyWG1vzK9xk3j5RX5H8Xvu5pbalVfTif8ZNQ6DXD_Sxtx6q39gZA/exec";
+
         let codeReader = null;
-        let selectedDeviceId = null;
         let currentStatus = "未開始";
+        let setupStartTime = null;
+        let workStartTime = null;
+        let calculatedSetupMinutes = 0; // 💡 計測された段取り時間を保持する変数
 
         window.addEventListener('load', () => {
             codeReader = new ZXing.BrowserMultiFormatReader();
             const today = new Date();
-            const yyyy = today.getFullYear();
-            const mm = String(today.getMonth() + 1).padStart(2, '0');
-            const dd = String(today.getDate()).padStart(2, '0');
-            document.getElementById('date-input').value = `${yyyy}/${mm}/${dd}`;
+            document.getElementById('date-input').value = `${today.getFullYear()}/${String(today.getMonth()+1).padStart(2,'0')}/${String(today.getDate()).padStart(2,'0')}`;
         });
 
         function startCamera() {
-            const preview = document.getElementById('camera-preview');
-            preview.style.display = 'block';
-            
-            // 💡 カメラデバイスのリストアップと最適なカメラ（背面カメラ）の自動選定ロジックを強化
-            codeReader.listVideoInputDevices()
-                .then((videoInputDevices) => {
-                    if (!videoInputDevices || videoInputDevices.length === 0) {
-                        showToast("❌ 使用可能なカメラが見つかりません。");
-                        return;
+            document.getElementById('camera-preview').style.display = 'block';
+            codeReader.listVideoInputDevices().then(devices => {
+                let deviceId = devices[0].deviceId;
+                for (let d of devices) {
+                    if (d.label.toLowerCase().includes('back') || d.label.toLowerCase().includes('environment')) { deviceId = d.deviceId; break; }
+                }
+                showToast("バーコードを枠内に映してください。");
+                codeReader.decodeFromVideoDevice(deviceId, 'video', (result) => {
+                    if (result) {
+                        let clean = result.text.trim().toUpperCase().replace(/^S/, "").substring(0, 6);
+                        document.getElementById('order-input').value = clean;
+                        fetchOrderInfo(clean);
+                        codeReader.reset();
+                        document.getElementById('camera-preview').style.display = 'none';
                     }
-                    
-                    selectedDeviceId = videoInputDevices[0].deviceId;
-                    // スマホの背面カメラ（environment）や外カメラ（back）を優先検索
-                    for(let device of videoInputDevices){
-                        const label = device.label.toLowerCase();
-                        if(label.includes('back') || label.includes('environment') || label.includes('背面') || label.includes('外カメラ')){
-                            selectedDeviceId = device.deviceId;
-                            break;
-                        }
-                    }
-                    
-                    showToast("バーコードを枠内に映してください。");
-                    
-                    // 💡 スキャン開始
-                    codeReader.decodeFromVideoDevice(selectedDeviceId, 'video', (result, err) => {
-                        if (result) {
-                            let scannedText = result.text.trim();
-                            let cleanText = scannedText.toUpperCase().startsWith("S") ? scannedText.substring(1) : scannedText;
-                            let core6Digit = cleanText.substring(0, 6);
-                            document.getElementById('order-input').value = core6Digit;
-                            showToast("✔ 読込番号: " + core6Digit);
-                            fetchOrderInfo(core6Digit);
-                            stopCamera();
-                        }
-                        // err はスキャン中の毎フレームで発生するため、ここでは無視（ログ出力のみ、または何もしない）
-                    });
-                }).catch(err => {
-                    console.error(err);
-                    showToast("❌ カメラ起動に失敗。ブラウザの「カメラ許可」を確認してください。");
                 });
-        }
-
-        function stopCamera() {
-            if (codeReader) {
-                codeReader.reset();
-            }
-            document.getElementById('camera-preview').style.display = 'none';
+            }).catch(() => showToast("❌ カメラ起動失敗"));
         }
 
         let searchTimeout = null;
         function triggerInstantSearch() {
-            const orderVal = document.getElementById('order-input').value.trim();
-            if (!orderVal) {
-                document.getElementById('name-input').value = "---";
-                document.getElementById('qty-input').value = "---";
-                currentStatus = "未開始";
-                updateButtonStates();
-                return;
-            }
+            const val = document.getElementById('order-input').value.trim();
+            if (!val) { resetFields(); return; }
             clearTimeout(searchTimeout);
             searchTimeout = setTimeout(() => {
-                let cleanVal = orderVal.toUpperCase().startsWith("S") ? orderVal.substring(1) : orderVal;
-                let core6Digit = cleanVal.substring(0, 6);
-                if (core6Digit.length >= 6) {
-                    document.getElementById('order-input').value = core6Digit;
-                    fetchOrderInfo(core6Digit);
-                }
+                let clean = val.toUpperCase().replace(/^S/, "").substring(0, 6);
+                if (clean.length >= 6) { document.getElementById('order-input').value = clean; fetchOrderInfo(clean); }
             }, 400);
         }
 
         function fetchOrderInfo(orderNo) {
-            showToast("指図残シートから情報を照合中...");
+            showToast("照合中...");
             fetch(`${API_URL}?orderNo=${orderNo}`)
-                .then(res => res.json())
+                .then(r => r.json())
                 .then(res => {
                     if (res.status === "success" && res.order) {
                         document.getElementById('date-input').value = res.order.date || "---";
                         document.getElementById('name-input').value = res.order.name || "---";
                         document.getElementById('qty-input').value = res.order.qty || "---";
-                        showToast("✔ 指図残シートの情報と連動しました");
+                        showToast("✔ データ取得成功");
                         currentStatus = "未開始";
                         updateButtonStates();
                     } else {
                         showToast(res.message || "不一致エラー");
                         document.getElementById('name-input').value = "不一致エラー";
-                        document.getElementById('qty-input').value = "---";
                         currentStatus = "未開始";
                         updateButtonStates();
                     }
-                })
-                .catch(err => {
-                    showToast("❌ データの取得に失敗しました。");
-                    document.getElementById('name-input').value = "不一致エラー";
-                    document.getElementById('qty-input').value = "---";
-                    currentStatus = "未開始";
-                    updateButtonStates();
-                });
+                }).catch(() => showToast("❌ 取得失敗"));
         }
 
+        // 💡 3段階ボタンの状態遷移ルール（Claude仕様を完全に再現）
         function updateButtonStates() {
-            const startBtn = document.getElementById('start-btn');
-            const endBtn = document.getElementById('end-btn');
             const orderVal = document.getElementById('order-input').value;
-            if (!orderVal) {
-                startBtn.disabled = true;
-                endBtn.disabled = true;
-                return;
-            }
+            const nameVal = document.getElementById('name-input').value;
+            const s = document.getElementById('setup-btn');
+            const st = document.getElementById('start-btn');
+            const e = document.getElementById('end-btn');
+            
+            // 初期化（すべて無効）
+            s.disabled = st.disabled = e.disabled = true;
+            
+            // 発注Noがない、または不一致エラーの時は何も押せない
+            if (!orderVal || nameVal === "不一致エラー" || nameVal === "---") return;
+            
+            // 各ステータスに応じた状態遷移
             if (currentStatus === "未開始") {
-                startBtn.disabled = false;
-                endBtn.disabled = true;
+                s.disabled = false; // 段取り開始のみ押せる
+            } else if (currentStatus === "段取り中") {
+                st.disabled = false; // 作業開始のみ押せる
             } else if (currentStatus === "開始中") {
-                startBtn.disabled = true;
-                endBtn.disabled = false;
-            } else if (currentStatus === "終了済") {
-                startBtn.disabled = true;
-                document.getElementById('order-input').value = "";
-                document.getElementById('name-input').value = "---";
-                document.getElementById('qty-input').value = "---";
-                endBtn.disabled = true;
+                e.disabled = false; // 完了のみ押せる
             }
         }
 
         function sendNippo(type) {
             const orderNo = document.getElementById('order-input').value;
-            const line = document.getElementById('line-select').value;
-            const workers = document.getElementById('workers-input').value;
-            const dateVal = document.getElementById('date-input').value;
-            const nameVal = document.getElementById('name-input').value;
-            const qtyVal = document.getElementById('qty-input').value;
+            const now = new Date();
 
+            // 1. 段取り開始ボタンの処理
+            if (type === '段取り開始') {
+                setupStartTime = now;
+                currentStatus = "段取り中";
+                showToast("⚙ 段取り開始しました");
+                updateButtonStates();
+                // 💡 「段取り開始」の時刻ログはクライアント側で保持し、次の「作業開始」送信時にまとめて送る、
+                // またはここで単独送信したい場合は後方互換性のため一旦リターン。
+                return;
+            }
+
+            // 2. 作業開始ボタンの処理
+            if (type === '開始') {
+                workStartTime = now;
+                if (setupStartTime) {
+                    // 段取り開始から作業開始までの差分（分）を計算して変数に格納
+                    calculatedSetupMinutes = Math.round((now - setupStartTime) / 1000 / 60);
+                    document.getElementById('setup-time-display').textContent = calculatedSetupMinutes;
+                    document.getElementById('time-info').style.display = 'block';
+                }
+                currentStatus = "開始中";
+            }
+
+            // 💡 送信データの組み立て（setup_time を追加）
             const payload = {
                 action: "save",
                 data: {
-                    orderNo: orderNo,
-                    line: line,
-                    workers: workers,
-                    type: type,
-                    date: dateVal,
-                    productName: nameVal,
-                    qty: qtyVal
+                    orderNo, 
+                    type,
+                    date: document.getElementById('date-input').value,
+                    productName: document.getElementById('name-input').value,
+                    qty: document.getElementById('qty-input').value,
+                    line: document.getElementById('line-select').value,
+                    workers: document.getElementById('workers-input').value,
+                    setup_time: calculatedSetupMinutes // 💡 計算された段取り時間をセットして送信
                 }
             };
 
-            showToast(type + "時刻を記録中...");
+            showToast(type + " を記録中...");
+            document.getElementById('setup-btn').disabled = true;
             document.getElementById('start-btn').disabled = true;
             document.getElementById('end-btn').disabled = true;
 
-            fetch(API_URL, {
-                method: "POST",
-                mode: "no-cors",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(payload)
-            })
+            fetch(API_URL, { method: "POST", mode: "no-cors", headers: {"Content-Type":"application/json"}, body: JSON.stringify(payload) })
             .then(() => {
                 showToast("✅ " + type + " を保存しました");
-                if (type === '開始') {
-                    currentStatus = "開始中";
-                } else {
+                
+                // 3. 完了ボタンの処理
+                if (type === '完了') {
+                    if (workStartTime) {
+                        const workMin = Math.round((now - workStartTime) / 1000 / 60);
+                        document.getElementById('work-time-display').textContent = workMin;
+                    }
                     currentStatus = "終了済";
-                    setTimeout(() => {
-                        currentStatus = "未開始";
-                        updateButtonStates();
-                    }, 2000);
+                    // 完了後、全リセット（3秒待ってから初期化）
+                    setTimeout(() => { resetFields(); }, 3000);
                 }
                 updateButtonStates();
-            })
-            .catch(err => {
-                showToast("❌ 保存エラーが発生しました。");
+            }).catch(() => {
+                showToast("❌ 保存エラー");
                 updateButtonStates();
             });
         }
 
+        function resetFields() {
+            document.getElementById('order-input').value = "";
+            document.getElementById('name-input').value = "---";
+            document.getElementById('qty-input').value = "---";
+            document.getElementById('time-info').style.display = 'none';
+            document.getElementById('setup-time-display').textContent = "---";
+            document.getElementById('work-time-display').textContent = "---";
+            setupStartTime = null;
+            workStartTime = null;
+            calculatedSetupMinutes = 0; // 時間をリセット
+            currentStatus = "未開始";
+            updateButtonStates();
+        }
+
         function showToast(msg) {
-            const toast = document.getElementById('toast');
-            toast.textContent = msg;
-            toast.classList.add('show');
-            setTimeout(() => { toast.classList.remove('show'); }, 4000);
+            const t = document.getElementById('toast');
+            t.textContent = msg;
+            t.classList.add('show');
+            setTimeout(() => t.classList.remove('show'), 4000);
         }
     </script>
 </body>
