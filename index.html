@@ -73,7 +73,7 @@
 
     <script src="https://cdn.jsdelivr.net/npm/@zxing/library@0.19.1/umd/index.min.js"></script>
     <script>
-        // ⚠️ 最新の再デプロイURLをここに貼り付けてください
+        // ⚠️ 最新の再デプロイURLが異なる場合は、この下の "" の中を書き換えてください
         const API_URL = "https://script.google.com/macros/s/AKfycbyVDbSrBdLA63F-pb07u4hkhA8diEVpiWklF2jme7KsLaUALxgW7TiYDMnof2WY7ZTYxQ/exec";
 
         let codeReader = null;
@@ -149,7 +149,8 @@
             fetch(`${API_URL}?orderNo=${orderNo}`)
                 .then(res => res.json())
                 .then(res => {
-                    if (res.status === "success" && res.order) {
+                    // 💡 ご指定通り、判定条件を「success」または「ok」の両方に対応させました
+                    if ((res.status === "success" || res.status === "ok") && res.order) {
                         document.getElementById('date-input').value = res.order.date || "---";
                         document.getElementById('name-input').value = res.order.name || "---";
                         document.getElementById('qty-input').value = res.order.qty || "---";
